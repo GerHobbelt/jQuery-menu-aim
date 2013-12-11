@@ -116,20 +116,24 @@
          * Cancel possible row activations when leaving the menu entirely
          */
         var mouseleaveMenu = function() {
+            var delay = activationDelay();
+
+            if (delay) {
+                timeoutId = setTimeout(function() {
+                    mouseleaveMenu();
+                }, delay);
+            } else {
                 if (timeoutId) {
                     clearTimeout(timeoutId);
                 }
 
-                // If exitMenu is supplied and returns true, deactivate the
-                // currently active row on menu exit.
-                if (options.exitMenu(this)) {
-                    if (activeRow) {
-                        options.deactivate(activeRow);
-                    }
-
-                    activeRow = null;
+                if (activeRow) {
+                    options.deactivate(activeRow);
                 }
-            };
+
+                activeRow = null;
+            }
+        };
 
         /**
          * Trigger a possible row activation whenever entering a new row.
@@ -196,79 +200,77 @@
          * checking again to see if the row should be activated.
          */
         var activationDelay = function() {
-                if (!activeRow || !$(activeRow).is(options.submenuSelector)) {
-                    // If there is no other submenu row already active, then
-                    // go ahead and activate immediately.
-                    return 0;
-                }
+            if (!activeRow) {
+                // If there is no other submenu row already active, then
+                // go ahead and activate immediately.
+                return 0;
+            }
 
-                var offset = $menu.offset(),
-                    upperLeft = {
-                        x: offset.left,
-                        y: offset.top - options.tolerance
-                    },
-                    upperRight = {
-                        x: offset.left + $menu.outerWidth(),
-                        y: upperLeft.y
-                    },
-                    lowerLeft = {
-                        x: offset.left,
-                        y: offset.top + $menu.outerHeight() + options.tolerance
-                    },
-                    lowerRight = {
-                        x: offset.left + $menu.outerWidth(),
-                        y: lowerLeft.y
-                    },
-                    loc = mouseLocs[mouseLocs.length - 1],
-                    prevLoc = mouseLocs[0];
+            var $submenu = $(activeRow).find('ul');
 
-                if (!loc) {
-                    return 0;
-                }
+            if (!$submenu.length) {
+                // if there is no submenu, activate immediately.
+                return 0;
+            }
 
-                if (!prevLoc) {
-                    prevLoc = loc;
-                }
+            var submenuOffset = $submenu.offset();
 
-                if (prevLoc.x < offset.left || prevLoc.x > lowerRight.x ||
-                    prevLoc.y < offset.top || prevLoc.y > lowerRight.y) {
-                    // If the previous mouse location was outside of the entire
-                    // menu's bounds, immediately activate.
-                    return 0;
-                }
+            var offset = $menu.offset(),
+                upperRight = {
+                    x: submenuOffset.left,
+                    y: submenuOffset.top
+                },
+                lowerRight = {
+                    x: submenuOffset.left,
+                    y: submenuOffset.top + $submenu.outerHeight()
+                },
+                loc = mouseLocs[mouseLocs.length - 1],
+                prevLoc = mouseLocs[0];
 
-                if (lastDelayLoc &&
-                        loc.x == lastDelayLoc.x && loc.y == lastDelayLoc.y) {
-                    // If the mouse hasn't moved since the last time we checked
-                    // for activation status, immediately activate.
-                    return 0;
-                }
+            if (!loc) {
+                return 0;
+            }
 
-                // Detect if the user is moving towards the currently activated
-                // submenu.
-                //
-                // If the mouse is heading relatively clearly towards
-                // the submenu's content, we should wait and give the user more
-                // time before activating a new row. If the mouse is heading
-                // elsewhere, we can immediately activate a new row.
-                //
-                // We detect this by calculating the slope formed between the
-                // current mouse location and the upper/lower right points of
-                // the menu. We do the same for the previous mouse location.
-                // If the current mouse location's slopes are
-                // increasing/decreasing appropriately compared to the
-                // previous's, we know the user is moving toward the submenu.
-                //
-                // Note that since the y-axis increases as the cursor moves
-                // down the screen, we are looking for the slope between the
-                // cursor and the upper right corner to decrease over time, not
-                // increase (somewhat counterintuitively).
-                function slope(a, b) {
-                    return (b.y - a.y) / (b.x - a.x);
-                };
+            if (!prevLoc) {
+                prevLoc = loc;
+            }
 
-                var decreasingCorner = upperRight,
-                    increasingCorner = lowerRight;
+            if (prevLoc.x < offset.left || prevLoc.x > lowerRight.x ||
+                prevLoc.y < offset.top || prevLoc.y > lowerRight.y) {
+                // If the previous mouse location was outside of the entire
+                // menu's bounds, immediately activate.
+                return 0;
+            }
+
+            if (lastDelayLoc &&
+                loc.x == lastDelayLoc.x && loc.y == lastDelayLoc.y) {
+                // If the mouse hasn't moved since the last time we checked
+                // for activation status, immediately activate.
+                return 0;
+            }
+
+            // Detect if the user is moving towards the currently activated
+            // submenu.
+            //
+            // If the mouse is heading relatively clearly towards
+            // the submenu's content, we should wait and give the user more
+            // time before activating a new row. If the mouse is heading
+            // elsewhere, we can immediately activate a new row.
+            //
+            // We detect this by calculating the slope formed between the
+            // current mouse location and the upper/lower right points of
+            // the menu. We do the same for the previous mouse location.
+            // If the current mouse location's slopes are
+            // increasing/decreasing appropriately compared to the
+            // previous's, we know the user is moving toward the submenu.
+            //
+            // Note that since the y-axis increases as the cursor moves
+            // down the screen, we are looking for the slope between the
+            // cursor and the upper right corner to decrease over time, not
+            // increase (somewhat counterintuitively).
+            function slope(a, b) {
+                return (b.y - a.y) / (b.x - a.x);
+            }
 
                 // Our expectations for decreasing or increasing slope values
                 // depends on which direction the submenu opens relative to the
@@ -277,21 +279,11 @@
                 // corner to decrease over time, as explained above. If the
                 // submenu opens in a different direction, we change our slope
                 // expectations.
-                if (options.submenuDirection == "left") {
-                    decreasingCorner = lowerLeft;
-                    increasingCorner = upperLeft;
-                } else if (options.submenuDirection == "below") {
-                    decreasingCorner = lowerRight;
-                    increasingCorner = lowerLeft;
-                } else if (options.submenuDirection == "above") {
-                    decreasingCorner = upperLeft;
-                    increasingCorner = upperRight;
-                }
 
-                var decreasingSlope = slope(loc, decreasingCorner),
-                    increasingSlope = slope(loc, increasingCorner),
-                    prevDecreasingSlope = slope(prevLoc, decreasingCorner),
-                    prevIncreasingSlope = slope(prevLoc, increasingCorner);
+            var decreasingSlope = slope(loc, upperRight),
+                increasingSlope = slope(loc, lowerRight),
+                prevDecreasingSlope = slope(prevLoc, upperRight),
+                prevIncreasingSlope = slope(prevLoc, lowerRight);
 
                 if (decreasingSlope < prevDecreasingSlope &&
                         increasingSlope > prevIncreasingSlope) {
