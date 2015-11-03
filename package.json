@@ -1,0 +1,16 @@
+{
+  "name": "jquery-menu-aim",
+  "version": "1.0.0",
+  "description": "jQuery plugin to fire events when user's cursor aims at particular dropdown menu items",
+  "main": "jquery.menu-aim.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/k-lange/jQuery-menu-aim.git"
+  },
+  "author": "Ben Kamens",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/k-lange/jQuery-menu-aim/issues"
+  },
+  "homepage": "https://github.com/k-lange/jQuery-menu-aim#readme"
+}
